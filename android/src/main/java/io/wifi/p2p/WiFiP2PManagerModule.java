@@ -7,11 +7,13 @@ import android.content.IntentFilter;
 import android.net.Uri;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
+import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pManager.PeerListListener;
+import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -24,10 +26,14 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Callback;
+import com.facebook.react.bridge.ReadableMapKeySetIterator;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.WritableNativeMap;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 import static android.os.Looper.getMainLooper;
 
@@ -55,6 +61,79 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
     @Override
     public void onConnectionInfoAvailable(WifiP2pInfo info) {
         this.wifiP2pInfo = info;
+    }
+
+    private HashMap<String, Object> toHashMap(ReadableMap map) {
+        HashMap<String, Object> hashMap = new HashMap<>();
+        ReadableMapKeySetIterator iterator = map.keySetIterator();
+        while (iterator.hasNextKey()) {
+            String key = iterator.nextKey();
+            switch (map.getType(key)) {
+                case Null:
+                    hashMap.put(key, null);
+                    break;
+                case Boolean:
+                    hashMap.put(key, map.getBoolean(key));
+                    break;
+                case Number:
+                    hashMap.put(key, map.getDouble(key));
+                    break;
+                case String:
+                    hashMap.put(key, map.getString(key));
+                    break;
+                case Map:
+                    hashMap.put(key,toHashMap(map.getMap(key)));
+                    break;
+                default:
+                    throw new IllegalArgumentException("Could not convert object with key: " + key + ".");
+            }
+        }
+        return hashMap;
+    }
+
+    @ReactMethod
+    public void startServiceRegistration(ReadableMap record, final Promise promise){
+        Map newRecord = toHashMap(record);
+        WifiP2pDnsSdServiceInfo serviceInfo =
+                WifiP2pDnsSdServiceInfo.newInstance("_test", "_presence._tcp", newRecord);
+
+        // Add the local service, sending the service info, network channel,
+        // and listener that will be used to indicate success or failure of
+        // the request.
+        manager.addLocalService(channel, serviceInfo, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                // Command successful! Code isn't necessarily needed here,
+                // Unless you want to update the UI or add logging statements.
+                promise.resolve(true);
+            }
+
+            @Override
+            public void onFailure(int arg0) {
+                // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
+                promise.reject("Error occured", String.valueOf(arg0));
+            }
+        });
+    }
+
+    @ReactMethod
+    public void discoverService(final Callback cb){
+        WifiP2pManager.DnsSdTxtRecordListener txtListener = new WifiP2pManager.DnsSdTxtRecordListener() {
+            /* Callback includes:
+             * fullDomain: full domain name: e.g "printer._ipp._tcp.local."
+             * record: TXT record dta as a map of key/value pairs.
+             * device: The device running the advertised service.
+             */
+            @Override
+            public void onDnsSdTxtRecordAvailable(
+                    String fullDomain, Map record, WifiP2pDevice device) {
+                Log.d(TAG, "DnsSdTxtRecord available -" + record.toString());
+                WritableMap map = new WritableNativeMap();
+                map.putString("servicename",record.get("servicename").toString());
+                map.putString("deviceAddress", device.deviceAddress);
+                cb.invoke(map);
+            }
+        };
     }
 
     @ReactMethod

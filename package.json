@@ -1,12 +1,12 @@
 {
-  "name": "react-native-wifi-p2p",
-  "version": "3.2.2",
+  "name": "react-native-wifi-p2p-reborn",
+  "version": "1.0.0",
   "description": "Module for working with wifi direct (p2p) API module in android.",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kirikzyusko1996/react-native-wifi-p2p.git"
+    "url": "git+https://github.com/m3tasploit/react-native-wifi-p2p-reborn.git"
   },
-  "homepage": "https://github.com/kirikzyusko1996/react-native-wifi-p2p#README.MD",
+  "homepage": "https://github.com/m3tasploit/react-native-wifi-p2p-reborn#README.MD",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
