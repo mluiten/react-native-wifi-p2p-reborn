@@ -14,6 +14,7 @@ import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pManager.PeerListListener;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
+import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -134,6 +135,63 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
                 cb.invoke(map);
             }
         };
+
+        WifiP2pManager.DnsSdServiceResponseListener servListener = new WifiP2pManager.DnsSdServiceResponseListener() {
+            @Override
+            public void onDnsSdServiceAvailable(String instanceName, String registrationType,
+                                                WifiP2pDevice resourceType) {
+
+                // Update the device name with the human-friendly version from
+                // the DnsTxtRecord, assuming one arrived.
+//                resourceType.deviceName = buddies
+//                        .containsKey(resourceType.deviceAddress) ? buddies
+//                        .get(resourceType.deviceAddress) : resourceType.deviceName;
+
+                // Add to the custom adapter defined specifically for showing
+                // wifi devices.
+//                WiFiDirectServicesList fragment = (WiFiDirectServicesList) getFragmentManager()
+//                        .findFragmentById(R.id.frag_peerlist);
+//                WiFiDevicesAdapter adapter = ((WiFiDevicesAdapter) fragment
+//                        .getListAdapter());
+//
+//                adapter.add(resourceType);
+//                adapter.notifyDataSetChanged();
+                Log.d(TAG, "onBonjourServiceAvailable " + instanceName);
+            }
+        };
+
+        manager.setDnsSdResponseListeners(channel, servListener, txtListener);
+
+        WifiP2pDnsSdServiceRequest serviceRequest = WifiP2pDnsSdServiceRequest.newInstance();
+        manager.addServiceRequest(channel,
+                serviceRequest,
+                new WifiP2pManager.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        // Success!
+                    }
+
+                    @Override
+                    public void onFailure(int code) {
+                        // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
+                    }
+                });
+
+        manager.discoverServices(channel, new WifiP2pManager.ActionListener() {
+
+            @Override
+            public void onSuccess() {
+                // Success!
+            }
+
+            @Override
+            public void onFailure(int code) {
+                // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
+                if (code == WifiP2pManager.P2P_UNSUPPORTED) {
+                    Log.d(TAG, "P2P isn't supported on this device.");
+                }
+            }
+        });
     }
 
     @ReactMethod
