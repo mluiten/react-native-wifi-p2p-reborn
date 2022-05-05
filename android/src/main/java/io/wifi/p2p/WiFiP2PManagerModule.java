@@ -48,6 +48,8 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
     private ReactApplicationContext reactContext;
     private static final String TAG = "RNWiFiP2P";
     private WiFiP2PDeviceMapper mapper = new WiFiP2PDeviceMapper();
+    public static final String SERVICE_INSTANCE = "_rnwifip2preborn";
+    public  static final String SERVICE_TYPE = "_presence._tcp";
 
     public WiFiP2PManagerModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -96,7 +98,7 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
     public void startServiceRegistration(ReadableMap record, final Promise promise){
         Map newRecord = toHashMap(record);
         WifiP2pDnsSdServiceInfo serviceInfo =
-                WifiP2pDnsSdServiceInfo.newInstance("_test", "_presence._tcp", newRecord);
+                WifiP2pDnsSdServiceInfo.newInstance(SERVICE_INSTANCE, SERVICE_TYPE, newRecord);
 
         // Add the local service, sending the service info, network channel,
         // and listener that will be used to indicate success or failure of
@@ -119,53 +121,58 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
 
     @ReactMethod
     public void discoverService(final Callback cb){
-        WifiP2pManager.DnsSdTxtRecordListener txtListener = new WifiP2pManager.DnsSdTxtRecordListener() {
-            /* Callback includes:
-             * fullDomain: full domain name: e.g "printer._ipp._tcp.local."
-             * record: TXT record dta as a map of key/value pairs.
-             * device: The device running the advertised service.
-             */
+
+        manager.clearLocalServices(channel, new WifiP2pManager.ActionListener() {
             @Override
-            public void onDnsSdTxtRecordAvailable(
-                    String fullDomain, Map record, WifiP2pDevice device) {
-                Log.d(TAG, "DnsSdTxtRecord available -" + record.toString());
-                WritableMap map = new WritableNativeMap();
-                map.putString("servicename",record.get("servicename").toString());
-                map.putString("deviceAddress", device.deviceAddress);
-                cb.invoke(map);
-            }
-        };
+            public void onSuccess() {
+                WifiP2pManager.DnsSdTxtRecordListener txtListener = new WifiP2pManager.DnsSdTxtRecordListener() {
+                    /* Callback includes:
+                     * fullDomain: full domain name: e.g "printer._ipp._tcp.local."
+                     * record: TXT record dta as a map of key/value pairs.
+                     * device: The device running the advertised service.
+                     */
+                    @Override
+                    public void onDnsSdTxtRecordAvailable(
+                            String fullDomain, Map record, WifiP2pDevice device) {
+                        Log.d(TAG, "DnsSdTxtRecord available -" + record.toString());
+                        WritableMap map = new WritableNativeMap();
+                        map.putString("servicename",record.get("servicename").toString());
+                        map.putString("deviceAddress", device.deviceAddress);
+                        cb.invoke(map);
+                    }
+                };
 
-        WifiP2pManager.DnsSdServiceResponseListener servListener = new WifiP2pManager.DnsSdServiceResponseListener() {
-            @Override
-            public void onDnsSdServiceAvailable(String instanceName, String registrationType,
-                                                WifiP2pDevice resourceType) {
+                WifiP2pManager.DnsSdServiceResponseListener servListener = new WifiP2pManager.DnsSdServiceResponseListener() {
+                    @Override
+                    public void onDnsSdServiceAvailable(String instanceName, String registrationType,
+                                                        WifiP2pDevice resourceType) {
 
-                // Update the device name with the human-friendly version from
-                // the DnsTxtRecord, assuming one arrived.
-//                resourceType.deviceName = buddies
-//                        .containsKey(resourceType.deviceAddress) ? buddies
-//                        .get(resourceType.deviceAddress) : resourceType.deviceName;
+                        if (instanceName.equalsIgnoreCase(SERVICE_INSTANCE)) {
+                            Log.d(TAG, "onBonjourServiceAvailable "
+                                    + instanceName);
+                        }
+                    }
+                };
 
-                // Add to the custom adapter defined specifically for showing
-                // wifi devices.
-//                WiFiDirectServicesList fragment = (WiFiDirectServicesList) getFragmentManager()
-//                        .findFragmentById(R.id.frag_peerlist);
-//                WiFiDevicesAdapter adapter = ((WiFiDevicesAdapter) fragment
-//                        .getListAdapter());
-//
-//                adapter.add(resourceType);
-//                adapter.notifyDataSetChanged();
-                Log.d(TAG, "onBonjourServiceAvailable " + instanceName);
-            }
-        };
+                manager.setDnsSdResponseListeners(channel, servListener, txtListener);
 
-        manager.setDnsSdResponseListeners(channel, servListener, txtListener);
+                WifiP2pDnsSdServiceRequest serviceRequest = WifiP2pDnsSdServiceRequest.newInstance();
+                manager.addServiceRequest(channel,
+                        serviceRequest,
+                        new WifiP2pManager.ActionListener() {
+                            @Override
+                            public void onSuccess() {
+                                // Success!
+                            }
 
-        WifiP2pDnsSdServiceRequest serviceRequest = WifiP2pDnsSdServiceRequest.newInstance();
-        manager.addServiceRequest(channel,
-                serviceRequest,
-                new WifiP2pManager.ActionListener() {
+                            @Override
+                            public void onFailure(int code) {
+                                // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
+                            }
+                        });
+
+                manager.discoverServices(channel, new WifiP2pManager.ActionListener() {
+
                     @Override
                     public void onSuccess() {
                         // Success!
@@ -174,22 +181,16 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
                     @Override
                     public void onFailure(int code) {
                         // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
+                        if (code == WifiP2pManager.P2P_UNSUPPORTED) {
+                            Log.d(TAG, "P2P isn't supported on this device.");
+                        }
                     }
                 });
-
-        manager.discoverServices(channel, new WifiP2pManager.ActionListener() {
-
-            @Override
-            public void onSuccess() {
-                // Success!
             }
 
             @Override
-            public void onFailure(int code) {
-                // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
-                if (code == WifiP2pManager.P2P_UNSUPPORTED) {
-                    Log.d(TAG, "P2P isn't supported on this device.");
-                }
+            public void onFailure(int error) {
+                // react to failure of clearing the local services
             }
         });
     }
