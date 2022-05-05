@@ -168,105 +168,27 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
     @ReactMethod
     public void startServiceRegistration(ReadableMap record, final Promise promise){
         Map newRecord = toHashMap(record);
-        WifiP2pDnsSdServiceInfo serviceInfo =
+        final WifiP2pDnsSdServiceInfo serviceInfo =
                 WifiP2pDnsSdServiceInfo.newInstance(SERVICE_INSTANCE, SERVICE_TYPE, newRecord);
 
         // Add the local service, sending the service info, network channel,
         // and listener that will be used to indicate success or failure of
         // the request.
-        manager.addLocalService(channel, serviceInfo, new WifiP2pManager.ActionListener() {
-            @Override
-            public void onSuccess() {
-                // Command successful! Code isn't necessarily needed here,
-                // Unless you want to update the UI or add logging statements.
-                promise.resolve(true);
-            }
-
-            @Override
-            public void onFailure(int arg0) {
-                // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
-                promise.reject("Error occured", String.valueOf(arg0));
-            }
-        });
-    }
-
-    @ReactMethod
-    public void discoverService(final Callback cb1, final Callback cb2){
-
         manager.clearLocalServices(channel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                WifiP2pManager.DnsSdTxtRecordListener txtListener = new WifiP2pManager.DnsSdTxtRecordListener() {
-                    /* Callback includes:
-                     * fullDomain: full domain name: e.g "printer._ipp._tcp.local."
-                     * record: TXT record dta as a map of key/value pairs.
-                     * device: The device running the advertised service.
-                     */
-                    @Override
-                    public void onDnsSdTxtRecordAvailable(
-                            String fullDomain, Map record, WifiP2pDevice device) {
-                        Log.d(TAG, "DnsSdTxtRecord available -" + record.toString());
-                        WritableMap map = new WritableNativeMap();
-                        map.putString("fullDomain", fullDomain);
-                        WritableMap recordMap = toWritableMap(record);
-                        serviceRecordWritableMap = recordMap;
-                        map.putMap("record", recordMap);
-                        WritableMap deviceMap = mapper.mapDeviceInfoToReactEntity(device);
-                        map.putMap("device",deviceMap);
-                        cb1.invoke(map);
-                    }
-                };
-
-                WifiP2pManager.DnsSdServiceResponseListener servListener = new WifiP2pManager.DnsSdServiceResponseListener() {
-                    @Override
-                    public void onDnsSdServiceAvailable(String instanceName, String registrationType,
-                                                        WifiP2pDevice resourceType) {
-
-                        if (instanceName.equalsIgnoreCase(SERVICE_INSTANCE)) {
-                            Log.d(TAG, "onBonjourServiceAvailable " + instanceName);
-                            WritableMap map = new WritableNativeMap();
-                            map.putString("instanceName", instanceName);
-                            map.putString("registrationType", registrationType);
-                            WritableMap resourceTypeMap = mapper.mapDeviceInfoToReactEntity(resourceType);
-                            map.putMap("device", resourceTypeMap);
-                            if(serviceRecordWritableMap !=null){
-                                map.putMap("record", serviceRecordWritableMap);
-                            }
-                            cb2.invoke(map);
-                        }
-                    }
-                };
-
-                manager.setDnsSdResponseListeners(channel, servListener, txtListener);
-
-                WifiP2pDnsSdServiceRequest serviceRequest = WifiP2pDnsSdServiceRequest.newInstance();
-                manager.addServiceRequest(channel,
-                        serviceRequest,
-                        new WifiP2pManager.ActionListener() {
-                            @Override
-                            public void onSuccess() {
-                                // Success!
-                            }
-
-                            @Override
-                            public void onFailure(int code) {
-                                // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
-                            }
-                        });
-
-                manager.discoverServices(channel, new WifiP2pManager.ActionListener() {
-
+                manager.addLocalService(channel, serviceInfo, new WifiP2pManager.ActionListener() {
                     @Override
                     public void onSuccess() {
-                        // Success!
+                        // Command successful! Code isn't necessarily needed here,
+                        // Unless you want to update the UI or add logging statements.
+                        promise.resolve(true);
                     }
 
                     @Override
-                    public void onFailure(int code) {
+                    public void onFailure(int arg0) {
                         // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
-                        if (code == WifiP2pManager.P2P_UNSUPPORTED) {
-                            Log.d(TAG, "P2P isn't supported on this device.");
-                        }
+                        promise.reject("Error occured", String.valueOf(arg0));
                     }
                 });
             }
@@ -276,6 +198,101 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
                 // react to failure of clearing the local services
             }
         });
+
+    }
+
+    @ReactMethod
+    public void discoverService(final Callback cb1, final Callback cb2){
+
+        WifiP2pManager.DnsSdTxtRecordListener txtListener = new WifiP2pManager.DnsSdTxtRecordListener() {
+            /* Callback includes:
+             * fullDomain: full domain name: e.g "printer._ipp._tcp.local."
+             * record: TXT record dta as a map of key/value pairs.
+             * device: The device running the advertised service.
+             */
+            @Override
+            public void onDnsSdTxtRecordAvailable(
+                    String fullDomain, Map record, WifiP2pDevice device) {
+                Log.d(TAG, "DnsSdTxtRecord available -" + record.toString());
+                WritableMap map = new WritableNativeMap();
+                map.putString("fullDomain", fullDomain);
+                WritableMap recordMap = toWritableMap(record);
+                serviceRecordWritableMap = recordMap;
+                map.putMap("record", recordMap);
+                WritableMap deviceMap = mapper.mapDeviceInfoToReactEntity(device);
+                map.putMap("device",deviceMap);
+                cb1.invoke(map);
+            }
+        };
+
+        WifiP2pManager.DnsSdServiceResponseListener servListener = new WifiP2pManager.DnsSdServiceResponseListener() {
+            @Override
+            public void onDnsSdServiceAvailable(String instanceName, String registrationType,
+                                                WifiP2pDevice resourceType) {
+
+                if (instanceName.equalsIgnoreCase(SERVICE_INSTANCE)) {
+                    Log.d(TAG, "onBonjourServiceAvailable " + instanceName);
+                    WritableMap map = new WritableNativeMap();
+                    map.putString("instanceName", instanceName);
+                    map.putString("registrationType", registrationType);
+                    WritableMap resourceTypeMap = mapper.mapDeviceInfoToReactEntity(resourceType);
+                    map.putMap("device", resourceTypeMap);
+                    if(serviceRecordWritableMap !=null){
+                        map.putMap("record", serviceRecordWritableMap);
+                    }
+                    cb2.invoke(map);
+                }
+            }
+        };
+
+        manager.setDnsSdResponseListeners(channel, servListener, txtListener);
+
+        final WifiP2pDnsSdServiceRequest serviceRequest = WifiP2pDnsSdServiceRequest.newInstance();
+
+        manager.removeServiceRequest(channel, serviceRequest,
+                    new WifiP2pManager.ActionListener() {
+                        @Override
+                        public void onSuccess() {
+                            manager.addServiceRequest(channel,
+                                    serviceRequest,
+                                    new WifiP2pManager.ActionListener() {
+                                        @Override
+                                        public void onSuccess() {
+                                            // Success!
+                                            manager.discoverServices(channel, new WifiP2pManager.ActionListener() {
+
+                                                @Override
+                                                public void onSuccess() {
+                                                    // Success!
+                                                }
+
+                                                @Override
+                                                public void onFailure(int code) {
+                                                    // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
+                                                    if (code == WifiP2pManager.P2P_UNSUPPORTED) {
+                                                        Log.d(TAG, "P2P isn't supported on this device.");
+                                                    }
+                                                }
+                                            });
+                                        }
+
+                                        @Override
+                                        public void onFailure(int code) {
+                                            // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
+                                        }
+                                    });
+
+
+                        }
+
+                        @Override
+                        public void onFailure(int reason) {
+                            // react to failure of removing service request
+                        }
+                    });
+
+
+
     }
 
     @ReactMethod
