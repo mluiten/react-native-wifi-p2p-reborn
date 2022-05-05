@@ -21,6 +21,8 @@ import android.os.Environment;
 import android.os.ResultReceiver;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -32,6 +34,7 @@ import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableNativeMap;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
 
 import java.io.File;
 import java.util.HashMap;
@@ -66,6 +69,10 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
     @Override
     public void onConnectionInfoAvailable(WifiP2pInfo info) {
         this.wifiP2pInfo = info;
+    }
+
+    private void sendEvent(String eventName, @Nullable WritableMap params) {
+        reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(eventName, params);
     }
 
     private WritableArray toWritableArray(Object[] array) {
@@ -201,7 +208,7 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
     }
 
     @ReactMethod
-    public void discoverService(final Callback cb1, final Callback cb2){
+    public void discoverService(){
 
         WifiP2pManager.DnsSdTxtRecordListener txtListener = new WifiP2pManager.DnsSdTxtRecordListener() {
             /* Callback includes:
@@ -219,7 +226,7 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
                 map.putMap("record", recordMap);
                 WritableMap deviceMap = mapper.mapDeviceInfoToReactEntity(device);
                 map.putMap("device",deviceMap);
-                cb1.invoke(map);
+                sendEvent("WIFI_P2P:DNSTXTRECORDAVAILABLE", map);
             }
         };
 
@@ -235,7 +242,7 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
                     map.putString("registrationType", registrationType);
                     WritableMap resourceTypeMap = mapper.mapDeviceInfoToReactEntity(resourceType);
                     map.putMap("device", resourceTypeMap);
-                    cb2.invoke(map);
+                    sendEvent("WIFI_P2P:DNSSDSERVICEAVAILABLE", map);
                 }
             }
         };

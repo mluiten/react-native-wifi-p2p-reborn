@@ -7,6 +7,8 @@ const WiFiP2PManager = NativeModules.WiFiP2PManagerModule;
 const PEERS_UPDATED_ACTION = "PEERS_UPDATED";
 const CONNECTION_INFO_UPDATED_ACTION = "CONNECTION_INFO_UPDATED";
 const THIS_DEVICE_CHANGED_ACTION = "THIS_DEVICE_CHANGED_ACTION";
+const DNSTXTRECORD_AVAILABLE_ACTION = "DNSTXTRECORDAVAILABLE";
+const DNSSDSERVICE_AVAILABLE_ACTION = "DNSSDSERVICEAVAILABLE";
 
 // CONSTS
 const MODULE_NAME = "WIFI_P2P";
@@ -47,6 +49,18 @@ const subscribeOnConnectionInfoUpdates = (callback) =>
 
 const unsubscribeFromConnectionInfoUpdates = (callback) =>
   unsubscribeFromEvent(CONNECTION_INFO_UPDATED_ACTION, callback);
+
+const subscribeOnDnsTxtRecordAvailable = (callback) =>
+  subscribeOnEvent(DNSTXTRECORD_AVAILABLE_ACTION, callback);
+
+const unsubscribeFromDnsTxtRecordAvailable = (callback) =>
+  unsubscribeFromEvent(DNSTXTRECORD_AVAILABLE_ACTION, callback);
+
+const subscribeOnDnsSdServiceAvailable = (callback) =>
+  subscribeOnEvent(DNSSDSERVICE_AVAILABLE_ACTION, callback);
+
+const unsubscribeFromDnsSdServiceAvailable = (callback) =>
+  unsubscribeFromEvent(DNSSDSERVICE_AVAILABLE_ACTION, callback);
 
 const connect = (deviceAddress) => connectWithConfig({ deviceAddress });
 
@@ -114,8 +128,7 @@ const getConnectionInfo = () => WiFiP2PManager.getConnectionInfo();
 
 const getGroupInfo = () => WiFiP2PManager.getGroupInfo();
 
-const discoverService = (callback1, callback2) =>
-  WiFiP2PManager.discoverService(callback1, callback2);
+const discoverService = () => WiFiP2PManager.discoverService();
 const startServiceRegistration = (arg) =>
   WiFiP2PManager.startServiceRegistration(arg);
 
@@ -132,6 +145,10 @@ export {
   unsubscribeFromPeersUpdates,
   subscribeOnConnectionInfoUpdates,
   unsubscribeFromConnectionInfoUpdates,
+  subscribeOnDnsTxtRecordAvailable,
+  unsubscribeFromDnsTxtRecordAvailable,
+  subscribeOnDnsSdServiceAvailable,
+  unsubscribeFromDnsSdServiceAvailable,
   getAvailablePeers,
   connect,
   connectWithConfig,
