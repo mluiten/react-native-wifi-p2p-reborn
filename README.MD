@@ -96,7 +96,7 @@ compile project(':react-native-wifi-p2p')
 - [initialize()](#initialize)
 - [startDiscoveringPeers()](#startdiscoveringpeers)
 - [stopDiscoveringPeers()](#stopdiscoveringpeers)
-- [startServiceRegistration(record)](#startserviceregistration)
+- [startServiceRegistration(record)](#startserviceregistrationrecord)
 
 ### Subscribers & Actions annunciators
 
