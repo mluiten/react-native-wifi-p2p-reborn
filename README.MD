@@ -106,7 +106,7 @@ compile project(':react-native-wifi-p2p')
 - [unsubscribeFromConnectionInfoUpdates(callback)](#unsubscribefromconnectioninfoupdatescallback)
 - [subscribeOnThisDeviceChanged(callback)](#subscribeonthisdevicechangedcallback)
 - [unsubscribeFromThisDeviceChanged(callback)](#unsubscribefromthisdevicechangedcallback)
-- [discoverService(callback)](#discoverservice)
+- [discoverService(callback)](#discoverservicecallback1-callback2)
 
 ### Interaction with other devices
 
@@ -239,6 +239,22 @@ subscribeOnThisDeviceChanged((event) => {
 unsubscribeFromThisDeviceChanged((event) => {
   console.log("Unsubscribe from ThisDeviceChanged action: ", event);
 });
+```
+
+### discoverService(callback1, callback2)
+
+callback1 : callback to DnsSdTxtRecordListener
+callback2 : callback to DnsSdServiceResponseListener
+
+```javascript
+discoverService(
+  (args) => {
+    console.log("Service discovered", args);
+  },
+  (args) => {
+    console.log("Bonjour service discovered", args);
+  }
+);
 ```
 
 ## Interaction with other devices
