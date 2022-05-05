@@ -2,6 +2,8 @@
 
 `react-native-wifi-p2p-reborn` is a library to provide WiFi Direct (Peer-To-Peer, P2P) service to react-native.
 
+forked from `react-native-wifi-p2p` with added feature of wifip2p service discovery
+
 **_Important_**: currently only **Android** support realized.
 If you want to provide iOS support, then you should to note to [react-native-multipeer](https://github.com/lwansbrough/react-native-multipeer) repository.
 
@@ -94,6 +96,7 @@ compile project(':react-native-wifi-p2p')
 - [initialize()](#initialize)
 - [startDiscoveringPeers()](#startdiscoveringpeers)
 - [stopDiscoveringPeers()](#stopdiscoveringpeers)
+- [startServiceRegistration(record)](#startserviceregistration)
 
 ### Subscribers & Actions annunciators
 
@@ -103,6 +106,7 @@ compile project(':react-native-wifi-p2p')
 - [unsubscribeFromConnectionInfoUpdates(callback)](#unsubscribefromconnectioninfoupdatescallback)
 - [subscribeOnThisDeviceChanged(callback)](#subscribeonthisdevicechangedcallback)
 - [unsubscribeFromThisDeviceChanged(callback)](#unsubscribefromthisdevicechangedcallback)
+- [discoverService(callback)](#discoverservice)
 
 ### Interaction with other devices
 
@@ -163,6 +167,23 @@ startDiscoveringPeers()
 ```javascript
 stopDiscoveringPeers()
   .then(() => console.log("Stop discovering was successful"))
+  .catch((err) =>
+    console.error(
+      `Something is gone wrong. Maybe your WiFi is disabled? Error details: ${err}`
+    )
+  );
+```
+
+### startServiceRegistration(record)
+
+`startServiceRegistration(record)` register service to broadcast via WifiP2p. use `discoverService(callback)` to listen for broadcasted service.
+
+arguments :
+record : {servicename : "name of service to broadcast"}
+
+```javascript
+startServiceRegistration({ servicename: "wifip2papp" })
+  .then(() => console.log("service registration successfull"))
   .catch((err) =>
     console.error(
       `Something is gone wrong. Maybe your WiFi is disabled? Error details: ${err}`
