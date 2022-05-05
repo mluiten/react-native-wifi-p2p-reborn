@@ -52,7 +52,6 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
     private final WiFiP2PDeviceMapper mapper = new WiFiP2PDeviceMapper();
     public static final String SERVICE_INSTANCE = "_rnwifip2preborn";
     public static final String SERVICE_TYPE = "_presence._tcp";
-    private WritableMap serviceRecordWritableMap;
 
     public WiFiP2PManagerModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -217,7 +216,6 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
                 WritableMap map = new WritableNativeMap();
                 map.putString("fullDomain", fullDomain);
                 WritableMap recordMap = toWritableMap(record);
-                serviceRecordWritableMap = recordMap;
                 map.putMap("record", recordMap);
                 WritableMap deviceMap = mapper.mapDeviceInfoToReactEntity(device);
                 map.putMap("device",deviceMap);
@@ -237,9 +235,6 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
                     map.putString("registrationType", registrationType);
                     WritableMap resourceTypeMap = mapper.mapDeviceInfoToReactEntity(resourceType);
                     map.putMap("device", resourceTypeMap);
-                    if(serviceRecordWritableMap !=null){
-                        map.putMap("record", serviceRecordWritableMap);
-                    }
                     cb2.invoke(map);
                 }
             }
