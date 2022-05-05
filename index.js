@@ -114,7 +114,8 @@ const getConnectionInfo = () => WiFiP2PManager.getConnectionInfo();
 
 const getGroupInfo = () => WiFiP2PManager.getGroupInfo();
 
-const discoverService = (callback) => WiFiP2PManager.discoverService(callback);
+const discoverService = (callback1, callback2) =>
+  WiFiP2PManager.discoverService(callback1, callback2);
 const startServiceRegistration = (arg) =>
   WiFiP2PManager.startServiceRegistration(arg);
 
