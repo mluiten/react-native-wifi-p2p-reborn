@@ -327,6 +327,20 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
     }
 
     @ReactMethod
+    public void getPeerList(final Promise promise) {
+        manager.requestPeers(channel, new WifiP2pManager.PeerListListener(){
+            @Override
+            public void onPeersAvailable(WifiP2pDeviceList wifiP2pDeviceList) {
+                if(wifiP2pDeviceList != null){
+                    promise.resolve(mapper.mapDeviceListToReactEntityArray(wifiP2pDeviceList));
+                }else{
+                    promise.resolve(null);
+                }
+            }
+        });
+    }
+
+    @ReactMethod
     public void init(Promise promise) {
         if (manager != null) { // prevent reinitialization
             return;

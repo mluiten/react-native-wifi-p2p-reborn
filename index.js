@@ -128,6 +128,8 @@ const getConnectionInfo = () => WiFiP2PManager.getConnectionInfo();
 
 const getGroupInfo = () => WiFiP2PManager.getGroupInfo();
 
+const getPeerList = () => WiFiP2PManager.getPeerList();
+
 const discoverService = () => WiFiP2PManager.discoverService();
 const startServiceRegistration = (arg) =>
   WiFiP2PManager.startServiceRegistration(arg);
@@ -157,6 +159,7 @@ export {
   removeGroup,
   getConnectionInfo,
   getGroupInfo,
+  getPeerList,
   sendFile,
   receiveFile,
   sendMessage,

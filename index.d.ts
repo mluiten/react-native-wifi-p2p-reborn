@@ -21,6 +21,7 @@ export function createGroup(): any;
 export function removeGroup(): any;
 export function getConnectionInfo(): any;
 export function getGroupInfo(): any;
+export function getPeerList(): any;
 export function sendFile(pathToFile: any): any;
 export function receiveFile(folder: any, fileName: any, forceToScanGallery?: boolean): any;
 export function sendMessage(message: any): any;

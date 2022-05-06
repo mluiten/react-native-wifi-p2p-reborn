@@ -121,6 +121,7 @@ compile project(':react-native-wifi-p2p')
 - [createGroup()](#creategroup)
 - [removeGroup()](#removegroup)
 - [getGroupInfo()](#getgroupinfo)
+- [getPeerList()](#getpeerlist)
 - [getConnectionInfo()](#getconnectioninfo)
 - [sendFile(pathToFile)](#sendfilepathtofile)
 - [sendMessage(message)](#sendmessagemessage)
@@ -339,6 +340,10 @@ createGroup()
 ### getGroupInfo()
 
 You can call it after `createGroup()` method is executed. Info from this method also is available in `subscribeOnThisDeviceChanged`. This method was created basically for supporting API <= 17. See [issue](https://github.com/kirillzyusko/react-native-wifi-p2p/issues/21) thread.
+
+### getPeerList()
+
+Request the current list of peers.
 
 ### getConnectionInfo()
 
