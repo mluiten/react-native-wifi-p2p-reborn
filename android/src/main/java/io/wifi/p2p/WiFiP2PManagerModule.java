@@ -249,7 +249,7 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
 
         manager.setDnsSdResponseListeners(channel, servListener, txtListener);
 
-        final WifiP2pDnsSdServiceRequest serviceRequest = WifiP2pDnsSdServiceRequest.newInstance();
+        final WifiP2pDnsSdServiceRequest serviceRequest = WifiP2pDnsSdServiceRequest.newInstance(SERVICE_TYPE);
 
         manager.removeServiceRequest(channel, serviceRequest,
                     new WifiP2pManager.ActionListener() {
