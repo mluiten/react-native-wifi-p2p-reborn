@@ -74,7 +74,7 @@ npm install react-native-wifi-p2p-reborn --save
 
 ```
 include ':react-native-wifi-p2p'
-project(':react-native-wifi-p2p').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-wifi-p2p/android')
+project(':react-native-wifi-p2p').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-wifi-p2p-reborn/android')
 ```
 
 - Insert the following lines inside the dependencies block in `android/app/build.gradle`:
