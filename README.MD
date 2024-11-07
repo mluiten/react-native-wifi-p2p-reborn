@@ -62,7 +62,10 @@ npm install react-native-wifi-p2p-reborn --save
 +           android:required="true"
 +           android:name="android.permission.CHANGE_WIFI_STATE"/>
 +   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-+   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
++   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>+   <!-- If your app targets Android 13 (API level 33) or higher, you must declare the NEARBY_WIFI_DEVICES permission. -->
++   <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"
++   <!-- If your app derives location information from Wi-Fi APIs, don't include the "usesPermissionFlags" attribute. -->
++        android:usesPermissionFlags="neverForLocation" />
     ...
 ```
 
@@ -72,14 +75,14 @@ npm install react-native-wifi-p2p-reborn --save
 
 - Append the following lines to `android/settings.gradle`
 
-```
+```gradle
 include ':react-native-wifi-p2p'
 project(':react-native-wifi-p2p').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-wifi-p2p-reborn/android')
 ```
 
 - Insert the following lines inside the dependencies block in `android/app/build.gradle`:
 
-```
+```gradle
 compile project(':react-native-wifi-p2p')
 ```
 
@@ -100,17 +103,9 @@ compile project(':react-native-wifi-p2p')
 
 ### Subscribers & Actions annunciators
 
-- [subscribeOnPeersUpdates(callback)](#subscribeonpeersupdatescallback)
-- [unsubscribeFromPeersUpdates(callback)](#unsubscribefrompeersupdatescallback)
-- [subscribeOnConnectionInfoUpdates(callback)](#subscribeonconnectioninfoupdatescallback)
-- [unsubscribeFromConnectionInfoUpdates(callback)](#unsubscribefromconnectioninfoupdatescallback)
-- [subscribeOnThisDeviceChanged(callback)](#subscribeonthisdevicechangedcallback)
-- [unsubscribeFromThisDeviceChanged(callback)](#unsubscribefromthisdevicechangedcallback)
-- [subscribeOnDnsTxtRecordAvailable(callback)](#subscribeondnstxtrecordavailablecallback)
-- [unsubscribeFromDnsTxtRecordAvailable(callback)](#unsubscribefromdnstxtrecordavailablecallback)
-- [subscribeOnDnsSdServiceAvailable(callback)](#subscribeondnssdserviceavailablecallback)
-- [unsubscribeFromDnsSdServiceAvailable(callback)](#unsubscribefromdnssdserviceavailablecallback)
-- [discoverService()](#discoverservice)
+* [subscribeOnPeersUpdates(callback)](#subscribeonpeersupdatescallback)
+* [subscribeOnConnectionInfoUpdates(callback)](#subscribeonconnectioninfoupdatescallback)
+* [subscribeOnThisDeviceChanged(callback)](#subscribeonthisdevicechangedcallback)
 
 ### Interaction with other devices
 
@@ -124,7 +119,9 @@ compile project(':react-native-wifi-p2p')
 - [getPeerList()](#getpeerlist)
 - [getConnectionInfo()](#getconnectioninfo)
 - [sendFile(pathToFile)](#sendfilepathtofile)
-- [sendMessage(message)](#sendmessagemessage)
+- [sendFileTo(pathToFile, address)](#sendfiletopathtofile-address)
+* [sendMessage(message)](#sendmessagemessage)
+* [sendMessageTo(message, address)](#sendmessagetomessage-address)
 - [receiveFile(folder, fileName, forceToScanGallery)](#receivefilefolder-filename-forcetoscangallery)
 - [receiveMessage()](#receivemessage)
 
@@ -203,47 +200,35 @@ startServiceRegistration({ servicename: "wifip2papp" })
 `subscribeOnPeersUpdates(callback)` allow to subscribe on events, that will notify about availability of nearby devices.
 
 ```javascript
-subscribeOnPeersUpdates(({ devices }) => {
+const subscription = subscribeOnPeersUpdates(({ devices }) => {
   console.log(`New devices available: ${devices}`);
 });
-```
 
-### unsubscribeFromPeersUpdates(callback)
+// in order to remove a subscription (on unmount for example)
 
-```javascript
-unsubscribeFromPeersUpdates((event) => console.log(event));
+subscription.remove();
 ```
 
 ### subscribeOnConnectionInfoUpdates(callback)
 
 ```javascript
-subscribeOnConnectionInfoUpdates((event) => {
+const subscription = subscribeOnConnectionInfoUpdates((event) => {
   console.log("Connection Info Updates: ", event);
 });
-```
 
-### unsubscribeFromConnectionInfoUpdates(callback)
-
-```javascript
-unsubscribeFromConnectionInfoUpdates((event) => {
-  console.log("Unsubscribe from ConnectionInfoUpdates action: ", event);
-});
+// in order to remove a subscription (on unmount for example)
+subscription.remove();
 ```
 
 ### subscribeOnThisDeviceChanged(callback)
 
 ```javascript
-subscribeOnThisDeviceChanged((event) => {
+const subscription = subscribeOnThisDeviceChanged((event) => {
   console.log("This device changed: ", event);
 });
-```
 
-### unsubscribeFromThisDeviceChanged(callback)
-
-```javascript
-unsubscribeFromThisDeviceChanged((event) => {
-  console.log("Unsubscribe from ThisDeviceChanged action: ", event);
-});
+// in order to remove a subscription (on unmount for example)
+subscription.remove();
 ```
 
 ### discoverService()
@@ -394,6 +379,10 @@ PermissionsAndroid.request(
   .catch((err) => console.log(err));
 ```
 
+### sendFileTo(pathToFile, address)
+
+Same function as above but you can specify the address (a peer address in the same group as this device is).
+
 ### sendMessage(message)
 
 You should call this method if you want to send from client side to server (group) using wi-fi p2p feature. Before sending you should execute next steps:
@@ -405,6 +394,10 @@ You should call this method if you want to send from client side to server (grou
 5. Call `sendMessage(message)` on client side, after resolving `getConnectionInfo()`
 
 _Note_: you cannot send character encoding for string and by default this library uses `UTF-8`.
+
+### sendMessageTo(message, address)
+
+Same function as above but you can specify the address (a peer address in the same group as this device is).
 
 ### receiveFile(folder, fileName, forceToScanGallery)
 
@@ -450,11 +443,14 @@ PermissionsAndroid.request(
 
 ### receiveMessage()
 
-If you expect, that someone may send you a message - you can call this method in order to receive it:
-
+If you expect, that someone may send you a message - you can call this method in order to receive it. This opens a port to listen to ONE incoming message.
 ```javascript
 receiveMessage().then((message) => console.log(`Received message: ${message}`));
 ```
+
+### stopReceivingMessage()
+
+If you didn't receive the message from receiveMessage() as expected, stopReceivingMessage() closes the listening port. If the port is already closed, this method does nothing.
 
 ## CONSTANTS
 
@@ -478,7 +474,7 @@ import {
   CONNECTION_INFO_UPDATED_ACTION,
   THIS_DEVICE_CHANGED_ACTION,
 } from "react-native-wifi-p2p";
-import { subscribeOnEvent, unsubscribeFromEvent } from "react-native-wifi-p2p";
+import { subscribeOnEvent } from "react-native-wifi-p2p";
 
 // example of usage
 subscribeOnEvent(PEERS_UPDATED_ACTION, (event) => {
@@ -490,9 +486,11 @@ subscribeOnEvent(PEERS_UPDATED_ACTION, (event) => {
 
 On Android >= 6.0 you should ask permissions before usage of this library (since this grants are required):
 
-> **Note:** you should ask this grants before `startDiscoveringPeers`
+> **Note**: you should ask this grants before `startDiscoveringPeers`
 
-> **Note:** on Android 10 you will probably need to ask `ACCESS_FINE_LOCATION` instead of `ACCESS_COARSE_LOCATION`.
+> **Note**: on Android 10 you will probably need to ask `ACCESS_FINE_LOCATION` instead of `ACCESS_COARSE_LOCATION`.
+
+> **Note**: if you are targeting Android 13+ you also need to ask `NEARBY_WIFI_DEVICES` permission in runtime. You can do it using `react-native-permissions` library, if you are using react-native < 0.70
 
 ```javascript
 import { PermissionsAndroid } from 'react-native';
@@ -524,9 +522,6 @@ import {
   initialize,
   startDiscoveringPeers,
   stopDiscoveringPeers,
-  unsubscribeFromPeersUpdates,
-  unsubscribeFromThisDeviceChanged,
-  unsubscribeFromConnectionInfoUpdates,
   subscribeOnConnectionInfoUpdates,
   subscribeOnThisDeviceChanged,
   subscribeOnPeersUpdates,
@@ -546,6 +541,10 @@ import { PermissionsAndroid } from "react-native";
 
 type Props = {};
 export default class App extends PureComponent<Props> {
+  peersUpdatesSubscription;
+  connectionInfoUpdatesSubscription;
+  thisDeviceChangedSubscription;
+
   state = {
     devices: [],
   };
@@ -568,9 +567,9 @@ export default class App extends PureComponent<Props> {
           : "Permission denied: p2p mode will not work"
       );
 
-      subscribeOnPeersUpdates(this.handleNewPeers);
-      subscribeOnConnectionInfoUpdates(this.handleNewInfo);
-      subscribeOnThisDeviceChanged(this.handleThisDeviceChanged);
+      this.peersUpdatesSubscription =subscribeOnPeersUpdates(this.handleNewPeers);
+      this.connectionInfoUpdatesSubscription =subscribeOnConnectionInfoUpdates(this.handleNewInfo);
+      this.thisDeviceChangedSubscription = subscribeOnThisDeviceChanged(this.handleThisDeviceChanged);
 
       const status = await startDiscoveringPeers();
       console.log("startDiscoveringPeers status: ", status);
@@ -580,9 +579,9 @@ export default class App extends PureComponent<Props> {
   }
 
   componentWillUnmount() {
-    unsubscribeFromConnectionInfoUpdates(this.handleNewInfo);
-    unsubscribeFromPeersUpdates(this.handleNewPeers);
-    unsubscribeFromThisDeviceChanged(this.handleThisDeviceChanged);
+    this.peersUpdatesSubscription?.remove();
+    this.connectionInfoUpdatesSubscription?.remove();
+    this.thisDeviceChangedSubscription?.remove();
   }
 
   handleNewInfo = (info) => {

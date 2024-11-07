@@ -1,33 +1,89 @@
-export function initialize(): any;
+import type { EmitterSubscription } from 'react-native'
+
+export interface Device {
+    deviceAddress: string
+    deviceName: string
+    isGroupOwner: boolean
+    primaryDeviceType: string | null
+    secondaryDeviceType: string | null
+    status: number
+}
+export interface ConnectionArgs {
+    deviceAddress: string
+    groupOwnerIntent?: number
+}
+export interface GroupInfo {
+    interface: string
+    networkName: string
+    passphrase: string
+    owner: {
+        deviceAddress: string
+        deviceName: string
+        primaryDeviceType: string | null
+        secondaryDeviceType: string | null
+        status: number
+    }
+}
+
+export interface WifiP2pInfo {
+    groupOwnerAddress: {
+        hostAddress: string
+        isLoopbackAddress: boolean
+    } | null
+    groupFormed: boolean
+    isGroupOwner: boolean
+}
+export const PEERS_UPDATED_ACTION: string
+export const CONNECTION_INFO_UPDATED_ACTION: string
+export const THIS_DEVICE_CHANGED_ACTION: string
+// public methods
+export const initialize: () => Promise<boolean>
+export const startDiscoveringPeers: () => Promise<string>
+export const stopDiscoveringPeers: () => Promise<void>
+export const subscribeOnThisDeviceChanged: (callback: (data: GroupInfo) => void) => EmitterSubscription
+
 export function discoverService(): any;
 export function startServiceRegistration(arg: any): any;
-export function startDiscoveringPeers(): any;
-export function stopDiscoveringPeers(): any;
-export function subscribeOnThisDeviceChanged(callback: any): void;
-export function unsubscribeFromThisDeviceChanged(callback: any): void;
-export function subscribeOnPeersUpdates(callback: any): void;
-export function unsubscribeFromPeersUpdates(callback: any): void;
-export function subscribeOnConnectionInfoUpdates(callback: any): void;
-export function unsubscribeFromConnectionInfoUpdates(callback: any): void;
+
+/**
+ * @deprecated since RN 0.65 because of favour to new API.
+ * @see https://github.com/kirillzyusko/react-native-wifi-p2p/releases/tag/3.3.0 for migration process.
+ */
+export const unsubscribeFromThisDeviceChanged: (callback: (data: GroupInfo) => void) => void
+
+export const subscribeOnPeersUpdates: (callback: (data: {devices: Device[]}) => void) => EmitterSubscription
+
+/**
+ * @deprecated since RN 0.65 because of favour to new API.
+ * @see https://github.com/kirillzyusko/react-native-wifi-p2p/releases/tag/3.3.0 for migration process.
+ */
+export const unsubscribeFromPeersUpdates: (callback: (data: {devices: Device[]}) => void) => void
+
+export const subscribeOnConnectionInfoUpdates: (callback: (data: WifiP2pInfo) => void) => EmitterSubscription
+
+/**
+ * @deprecated since RN 0.65 because of favour to new API.
+ * @see https://github.com/kirillzyusko/react-native-wifi-p2p/releases/tag/3.3.0 for migration process.
+ */
+export const unsubscribeFromConnectionInfoUpdates: (callback: (data: WifiP2pInfo) => void) => void
+export const getAvailablePeers: () => Promise<{devices: Device[]}>
+export const connect: (deviceAddress: string) => Promise<void>
+export const connectWithConfig: (config: ConnectionArgs) => Promise<void>
+export const cancelConnect: () => Promise<void>
+export const createGroup: () => Promise<void>
+export const removeGroup: () => Promise<void>
+export const getConnectionInfo: () => Promise<WifiP2pInfo>
+export const getGroupInfo: () => Promise<GroupInfo>
+export const sendFile: (pathToFile: string) => Promise<{ time: number, file: string }>
+export const sendFileTo: (pathToFile: string, address: string) => Promise<{ time: number, file: string }>
+export const receiveFile: (folder: string, fileName: string, forceToScanGallery?: boolean) => Promise<string>
+export const sendMessage: (message: string) => Promise<{ time: number, message: string }>
+export const sendMessageTo: (message: string, address: string) => Promise<{ time: number, message: string }>
+export const receiveMessage: (props: { meta: boolean }) => Promise<string>
+export const stopReceivingMessage: () => void
+
 export function subscribeOnDnsTxtRecordAvailable(callback: any): void;
-export function unsubscribeFromDnsTxtRecordAvailable(callback: any): void;
 export function subscribeOnDnsSdServiceAvailable(callback: any): void;
-export function unsubscribeFromDnsSdServiceAvailable(callback: any): void;
-export function getAvailablePeers(): any;
-export function connect(deviceAddress: any): any;
-export function connectWithConfig(args: any): any;
-export function cancelConnect(): any;
-export function createGroup(): any;
-export function removeGroup(): any;
-export function getConnectionInfo(): any;
-export function getGroupInfo(): any;
-export function getPeerList(): any;
-export function sendFile(pathToFile: any): any;
-export function receiveFile(folder: any, fileName: any, forceToScanGallery?: boolean): any;
-export function sendMessage(message: any): any;
-export function receiveMessage(): any;
-export function subscribeOnEvent(event: any, callback: any): void;
-export function unsubscribeFromEvent(event: any, callback: any): void;
-export const PEERS_UPDATED_ACTION: "PEERS_UPDATED";
-export const CONNECTION_INFO_UPDATED_ACTION: "CONNECTION_INFO_UPDATED";
-export const THIS_DEVICE_CHANGED_ACTION: "THIS_DEVICE_CHANGED_ACTION";
+
+// system methods
+export const subscribeOnEvent: (event: string, callback: Function) => EmitterSubscription

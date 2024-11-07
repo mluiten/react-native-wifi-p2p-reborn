@@ -8,6 +8,7 @@ android/.gradle/
 android/.idea/
 android/gradlew
 android/gradlew.bat
+android/gradle/
 
 # User-specific stuff:
 .idea/**/workspace.xml
@@ -134,3 +135,6 @@ google-services.json
 freeline.py
 freeline/
 freeline_project_description.json
+
+.github/
+scripts/

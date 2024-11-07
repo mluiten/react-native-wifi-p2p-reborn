@@ -1,5 +1,7 @@
 package io.wifi.p2p;
 
+import static android.os.Looper.getMainLooper;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -9,9 +11,9 @@ import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
+import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
-import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pManager.PeerListListener;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
@@ -24,11 +26,12 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 
 import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
-import com.facebook.react.bridge.Callback;
+import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.ReadableMapKeySetIterator;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
@@ -41,20 +44,19 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import static android.os.Looper.getMainLooper;
-
 /**
  * Created by zyusk on 01.05.2018.
  */
 public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements WifiP2pManager.ConnectionInfoListener {
+    public static final String SERVICE_INSTANCE = "_rnwifip2preborn";
+    public static final String SERVICE_TYPE = "_presence._tcp";
+    private static final String TAG = "RNWiFiP2P";
     private WifiP2pInfo wifiP2pInfo;
     private WifiP2pManager manager;
     private WifiP2pManager.Channel channel;
-    private final ReactApplicationContext reactContext;
-    private static final String TAG = "RNWiFiP2P";
-    private final WiFiP2PDeviceMapper mapper = new WiFiP2PDeviceMapper();
-    public static final String SERVICE_INSTANCE = "_rnwifip2preborn";
-    public static final String SERVICE_TYPE = "_presence._tcp";
+    private ReactApplicationContext reactContext;
+    private WiFiP2PDeviceMapper mapper = new WiFiP2PDeviceMapper();
+    private MessageServer messageServer;
 
     public WiFiP2PManagerModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -71,111 +73,12 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
         this.wifiP2pInfo = info;
     }
 
-    private void sendEvent(String eventName, @Nullable WritableMap params) {
-        reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(eventName, params);
-    }
-
-    private WritableArray toWritableArray(Object[] array) {
-        WritableArray writableArray = Arguments.createArray();
-
-        try{
-            for (Object value : array) {
-                if (value == null) {
-                    writableArray.pushNull();
-                }
-                if (value instanceof Boolean) {
-                    writableArray.pushBoolean((Boolean) value);
-                }
-                if (value instanceof Double) {
-                    writableArray.pushDouble((Double) value);
-                }
-                if (value instanceof Integer) {
-                    writableArray.pushInt((Integer) value);
-                }
-                if (value instanceof String) {
-                    writableArray.pushString((String) value);
-                }
-                if (value instanceof Map) {
-                    writableArray.pushMap(toWritableMap((Map<String, Object>) value));
-                }
-                if (value != null && value.getClass().isArray()) {
-                    if (value instanceof Object[]) {
-                        writableArray.pushArray(toWritableArray((Object[]) value));
-                    }
-                }
-            }
-        }catch(Error e){
-            Log.d(TAG,"Error in toWritableArray", e);
-        }
-
-
-
-        return writableArray;
-    }
-
-    private WritableMap toWritableMap(Map<String, Object> map) {
-        WritableMap writableMap = Arguments.createMap();
-        Iterator iterator = map.entrySet().iterator();
-
-        while (iterator.hasNext()) {
-            Map.Entry pair = (Map.Entry)iterator.next();
-            Object value = pair.getValue();
-
-            if (value == null) {
-                writableMap.putNull((String) pair.getKey());
-            } else if (value instanceof Boolean) {
-                writableMap.putBoolean((String) pair.getKey(), (Boolean) value);
-            } else if (value instanceof Double) {
-                writableMap.putDouble((String) pair.getKey(), (Double) value);
-            } else if (value instanceof Integer) {
-                writableMap.putInt((String) pair.getKey(), (Integer) value);
-            } else if (value instanceof String) {
-                writableMap.putString((String) pair.getKey(), (String) value);
-            } else if (value instanceof Map) {
-                writableMap.putMap((String) pair.getKey(), toWritableMap((Map<String, Object>) value));
-            } else if (value.getClass() != null && value.getClass().isArray()) {
-                writableMap.putArray((String) pair.getKey(), toWritableArray((Object[]) value));
-            }
-
-            iterator.remove();
-        }
-
-        return writableMap;
-    }
-
-    private HashMap<String, Object> toHashMap(ReadableMap map) {
-        HashMap<String, Object> hashMap = new HashMap<>();
-        ReadableMapKeySetIterator iterator = map.keySetIterator();
-        while (iterator.hasNextKey()) {
-            String key = iterator.nextKey();
-            switch (map.getType(key)) {
-                case Null:
-                    hashMap.put(key, null);
-                    break;
-                case Boolean:
-                    hashMap.put(key, map.getBoolean(key));
-                    break;
-                case Number:
-                    hashMap.put(key, map.getDouble(key));
-                    break;
-                case String:
-                    hashMap.put(key, map.getString(key));
-                    break;
-                case Map:
-                    hashMap.put(key,toHashMap(map.getMap(key)));
-                    break;
-                default:
-                    throw new IllegalArgumentException("Could not convert object with key: " + key + ".");
-            }
-        }
-        return hashMap;
-    }
-
     @ReactMethod
-    public void startServiceRegistration(ReadableMap record, final Promise promise){
+    public void startServiceRegistration(ReadableMap record, final Promise promise) {
         Map newRecord = toHashMap(record);
-        final WifiP2pDnsSdServiceInfo serviceInfo =
-                WifiP2pDnsSdServiceInfo.newInstance(SERVICE_INSTANCE, SERVICE_TYPE, newRecord);
+        final WifiP2pDnsSdServiceInfo serviceInfo = WifiP2pDnsSdServiceInfo.newInstance(
+            SERVICE_INSTANCE, SERVICE_TYPE, newRecord
+        );
 
         // Add the local service, sending the service info, network channel,
         // and listener that will be used to indicate success or failure of
@@ -208,7 +111,7 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
     }
 
     @ReactMethod
-    public void discoverService(){
+    public void discoverService() {
 
         WifiP2pManager.DnsSdTxtRecordListener txtListener = new WifiP2pManager.DnsSdTxtRecordListener() {
             /* Callback includes:
@@ -217,23 +120,21 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
              * device: The device running the advertised service.
              */
             @Override
-            public void onDnsSdTxtRecordAvailable(
-                    String fullDomain, Map record, WifiP2pDevice device) {
+            public void onDnsSdTxtRecordAvailable(String fullDomain, Map record, WifiP2pDevice device) {
                 Log.d(TAG, "DnsSdTxtRecord available -" + record.toString());
                 WritableMap map = new WritableNativeMap();
                 map.putString("fullDomain", fullDomain);
                 WritableMap recordMap = toWritableMap(record);
                 map.putMap("record", recordMap);
                 WritableMap deviceMap = mapper.mapDeviceInfoToReactEntity(device);
-                map.putMap("device",deviceMap);
+                map.putMap("device", deviceMap);
                 sendEvent("WIFI_P2P:DNSTXTRECORDAVAILABLE", map);
             }
         };
 
         WifiP2pManager.DnsSdServiceResponseListener servListener = new WifiP2pManager.DnsSdServiceResponseListener() {
             @Override
-            public void onDnsSdServiceAvailable(String instanceName, String registrationType,
-                                                WifiP2pDevice resourceType) {
+            public void onDnsSdServiceAvailable(String instanceName, String registrationType, WifiP2pDevice resourceType) {
 
                 if (instanceName.equalsIgnoreCase(SERVICE_INSTANCE)) {
                     Log.d(TAG, "onBonjourServiceAvailable " + instanceName);
@@ -251,48 +152,44 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
 
         final WifiP2pDnsSdServiceRequest serviceRequest = WifiP2pDnsSdServiceRequest.newInstance(SERVICE_TYPE);
 
-        manager.removeServiceRequest(channel, serviceRequest,
-                    new WifiP2pManager.ActionListener() {
-                        @Override
-                        public void onSuccess() {
-                            manager.addServiceRequest(channel,
-                                    serviceRequest,
-                                    new WifiP2pManager.ActionListener() {
-                                        @Override
-                                        public void onSuccess() {
-                                            // Success!
-                                            manager.discoverServices(channel, new WifiP2pManager.ActionListener() {
+        manager.removeServiceRequest(channel, serviceRequest, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                manager.addServiceRequest(channel, serviceRequest, new WifiP2pManager.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        // Success!
+                        manager.discoverServices(channel, new WifiP2pManager.ActionListener() {
 
-                                                @Override
-                                                public void onSuccess() {
-                                                    // Success!
-                                                }
+                            @Override
+                            public void onSuccess() {
+                                // Success!
+                            }
 
-                                                @Override
-                                                public void onFailure(int code) {
-                                                    // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
-                                                    if (code == WifiP2pManager.P2P_UNSUPPORTED) {
-                                                        Log.d(TAG, "P2P isn't supported on this device.");
-                                                    }
-                                                }
-                                            });
-                                        }
+                            @Override
+                            public void onFailure(int code) {
+                                // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
+                                if (code == WifiP2pManager.P2P_UNSUPPORTED) {
+                                    Log.d(TAG, "P2P isn't supported on this device.");
+                                }
+                            }
+                        });
+                    }
 
-                                        @Override
-                                        public void onFailure(int code) {
-                                            // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
-                                        }
-                                    });
+                    @Override
+                    public void onFailure(int code) {
+                        // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
+                    }
+                });
 
 
-                        }
+            }
 
-                        @Override
-                        public void onFailure(int reason) {
-                            // react to failure of removing service request
-                        }
-                    });
-
+            @Override
+            public void onFailure(int reason) {
+                // react to failure of removing service request
+            }
+        });
 
 
     }
@@ -318,22 +215,7 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
             public void onGroupInfoAvailable(WifiP2pGroup group) {
                 if (group != null) {
                     promise.resolve(mapper.mapWiFiP2PGroupInfoToReactEntity(group));
-                }
-                else {
-                    promise.resolve(null);
-                }
-            }
-        });
-    }
-
-    @ReactMethod
-    public void getPeerList(final Promise promise) {
-        manager.requestPeers(channel, new WifiP2pManager.PeerListListener(){
-            @Override
-            public void onPeersAvailable(WifiP2pDeviceList wifiP2pDeviceList) {
-                if(wifiP2pDeviceList != null){
-                    promise.resolve(mapper.mapDeviceListToReactEntityArray(wifiP2pDeviceList));
-                }else{
+                } else {
                     promise.resolve(null);
                 }
             }
@@ -343,14 +225,22 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
     @ReactMethod
     public void init(Promise promise) {
         if (manager != null) { // prevent reinitialization
+            promise.reject("0x2", this.getName() + " module should only be initialized once.");
             return;
         }
 
         IntentFilter intentFilter = new IntentFilter();
 
+        // Indicates a change in the Wi-Fi Direct status.
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
+
+        // Indicates a change in the list of available peers.
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
+
+        // Indicates the state of Wi-Fi Direct connectivity has changed.
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
+
+        // Indicates this device's details have changed.
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
 
         Activity activity = getCurrentActivity();
@@ -373,7 +263,7 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
 
     @ReactMethod
     public void createGroup(final Callback callback) {
-        manager.createGroup(channel,  new WifiP2pManager.ActionListener()  {
+        manager.createGroup(channel, new WifiP2pManager.ActionListener() {
             public void onSuccess() {
                 callback.invoke(); // Group creation successful
             }
@@ -420,7 +310,7 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
 
             @Override
             public void onFailure(int reasonCode) {
-                callback.invoke(reasonCode);
+                callback.invoke(Integer.valueOf(reasonCode));
             }
         });
     }
@@ -464,9 +354,10 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
         config.deviceAddress = deviceAddress;
         config.wps.setup = WpsInfo.PBC;
 
-        if (bundle.containsKey("groupOwnerIntent")){
+        if (bundle.containsKey("groupOwnerIntent")) {
             config.groupOwnerIntent = (int) bundle.getDouble("groupOwnerIntent");
-        };
+        }
+        ;
 
         manager.connect(channel, config, new WifiP2pManager.ActionListener() {
             @Override
@@ -481,17 +372,28 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
         });
     }
 
+    ;
+
     @ReactMethod
     public void sendFile(String filePath, final Promise promise) {
+        if (wifiP2pInfo.groupOwnerAddress != null) {
+            sendFileTo(filePath, wifiP2pInfo.groupOwnerAddress.getHostAddress(), promise);
+        } else {
+            promise.reject("CONNECTION_CLOSED");
+        }
+    }
+
+    @ReactMethod
+    public void sendFileTo(final String filePath, final String address, final Promise promise) {
         // User has picked a file. Transfer it to group owner i.e peer using FileTransferService
         Uri uri = Uri.fromFile(new File(filePath));
-        String hostAddress = wifiP2pInfo.groupOwnerAddress.getHostAddress();
         Log.i(TAG, "Sending: " + uri);
         Log.i(TAG, "Intent----------- " + uri);
         Intent serviceIntent = new Intent(getCurrentActivity(), FileTransferService.class);
         serviceIntent.setAction(FileTransferService.ACTION_SEND_FILE);
         serviceIntent.putExtra(FileTransferService.EXTRAS_FILE_PATH, uri.toString());
-        serviceIntent.putExtra(FileTransferService.EXTRAS_GROUP_OWNER_ADDRESS, hostAddress);
+        serviceIntent.putExtra(FileTransferService.EXTRAS_ADDRESS, address);
+        serviceIntent.putExtra(FileTransferService.EXTRAS_PORT, 8988);
         serviceIntent.putExtra(FileTransferService.REQUEST_RECEIVER_EXTRA, new ResultReceiver(null) {
             @Override
             protected void onReceiveResult(int resultCode, Bundle resultData) {
@@ -502,7 +404,6 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
                 }
             }
         });
-        serviceIntent.putExtra(FileTransferService.EXTRAS_GROUP_OWNER_PORT, 8988);
         getCurrentActivity().startService(serviceIntent);
     }
 
@@ -512,11 +413,12 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
         manager.requestConnectionInfo(channel, new WifiP2pManager.ConnectionInfoListener() {
             @Override
             public void onConnectionInfoAvailable(WifiP2pInfo info) {
-                if (info.groupFormed && info.isGroupOwner) {
+                if (info.groupFormed) {
                     new FileServerAsyncTask(getCurrentActivity(), callback, destination, new CustomDefinedCallback() {
                         @Override
                         public void invoke(Object object) {
-                            if (forceToScanGallery) { // fixes: https://github.com/kirillzyusko/react-native-wifi-p2p/issues/31
+                            if (forceToScanGallery) { // fixes:
+                                // https://github.com/kirillzyusko/react-native-wifi-p2p/issues/31
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                                     final Intent scanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
                                     final File file = new File(destination);
@@ -530,8 +432,8 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
                             }
                         }
                     }).execute();
-                } else if (info.groupFormed) {
-                    // The other device acts as the client
+                } else {
+                    Log.i(TAG, "You must be in a group to receive a file");
                 }
             }
         });
@@ -539,12 +441,21 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
 
     @ReactMethod
     public void sendMessage(String message, final Promise promise) {
+        if (wifiP2pInfo.groupOwnerAddress != null) {
+            sendMessageTo(message, wifiP2pInfo.groupOwnerAddress.getHostAddress(), promise);
+        } else {
+            promise.reject("CONNECTION_CLOSED");
+        }
+    }
+
+    @ReactMethod
+    public void sendMessageTo(final String message, final String address, final Promise promise) {
         Log.i(TAG, "Sending message: " + message);
         Intent serviceIntent = new Intent(getCurrentActivity(), MessageTransferService.class);
         serviceIntent.setAction(MessageTransferService.ACTION_SEND_MESSAGE);
         serviceIntent.putExtra(MessageTransferService.EXTRAS_DATA, message);
-        serviceIntent.putExtra(MessageTransferService.EXTRAS_GROUP_OWNER_ADDRESS, wifiP2pInfo.groupOwnerAddress.getHostAddress());
-        serviceIntent.putExtra(MessageTransferService.EXTRAS_GROUP_OWNER_PORT, 8988);
+        serviceIntent.putExtra(MessageTransferService.EXTRAS_ADDRESS, address);
+        serviceIntent.putExtra(MessageTransferService.EXTRAS_PORT, 8988);
         serviceIntent.putExtra(MessageTransferService.REQUEST_RECEIVER_EXTRA, new ResultReceiver(null) {
             @Override
             protected void onReceiveResult(int resultCode, Bundle resultData) {
@@ -559,17 +470,125 @@ public class WiFiP2PManagerModule extends ReactContextBaseJavaModule implements 
     }
 
     @ReactMethod
-    public void receiveMessage(final Callback callback) {
+    public void receiveMessage(final ReadableMap props, final Callback callback) {
         manager.requestConnectionInfo(channel, new WifiP2pManager.ConnectionInfoListener() {
             @Override
             public void onConnectionInfoAvailable(WifiP2pInfo info) {
-                if (info.groupFormed && info.isGroupOwner) {
-                    new MessageServerAsyncTask(callback)
-                            .execute();
-                } else if (info.groupFormed) {
-                    // The other device acts as the client
+                if (info.groupFormed) {
+                    if (messageServer == null) {
+                        messageServer = new MessageServer();
+                    }
+                    messageServer.start(props, callback);
+                } else {
+                    Log.i(TAG, "You must be in a group to receive messages");
                 }
             }
         });
+    }
+
+    @ReactMethod
+    public void stopReceivingMessage() {
+        if (messageServer != null) {
+            messageServer.stop();
+        }
+    }
+
+    private void sendEvent(String eventName, @Nullable WritableMap params) {
+        reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(eventName, params);
+    }
+
+    private WritableArray toWritableArray(Object[] array) {
+        WritableArray writableArray = Arguments.createArray();
+
+        try {
+            for (Object value : array) {
+                if (value == null) {
+                    writableArray.pushNull();
+                }
+                if (value instanceof Boolean) {
+                    writableArray.pushBoolean((Boolean) value);
+                }
+                if (value instanceof Double) {
+                    writableArray.pushDouble((Double) value);
+                }
+                if (value instanceof Integer) {
+                    writableArray.pushInt((Integer) value);
+                }
+                if (value instanceof String) {
+                    writableArray.pushString((String) value);
+                }
+                if (value instanceof Map) {
+                    writableArray.pushMap(toWritableMap((Map<String, Object>) value));
+                }
+                if (value != null && value.getClass().isArray()) {
+                    if (value instanceof Object[]) {
+                        writableArray.pushArray(toWritableArray((Object[]) value));
+                    }
+                }
+            }
+        } catch (Error e) {
+            Log.d(TAG, "Error in toWritableArray", e);
+        }
+
+
+        return writableArray;
+    }
+
+    private WritableMap toWritableMap(Map<String, Object> map) {
+        WritableMap writableMap = Arguments.createMap();
+        Iterator iterator = map.entrySet().iterator();
+
+        while (iterator.hasNext()) {
+            Map.Entry pair = (Map.Entry) iterator.next();
+            Object value = pair.getValue();
+
+            if (value == null) {
+                writableMap.putNull((String) pair.getKey());
+            } else if (value instanceof Boolean) {
+                writableMap.putBoolean((String) pair.getKey(), (Boolean) value);
+            } else if (value instanceof Double) {
+                writableMap.putDouble((String) pair.getKey(), (Double) value);
+            } else if (value instanceof Integer) {
+                writableMap.putInt((String) pair.getKey(), (Integer) value);
+            } else if (value instanceof String) {
+                writableMap.putString((String) pair.getKey(), (String) value);
+            } else if (value instanceof Map) {
+                writableMap.putMap((String) pair.getKey(), toWritableMap((Map<String, Object>) value));
+            } else if (value.getClass() != null && value.getClass().isArray()) {
+                writableMap.putArray((String) pair.getKey(), toWritableArray((Object[]) value));
+            }
+
+            iterator.remove();
+        }
+
+        return writableMap;
+    }
+
+    private HashMap<String, Object> toHashMap(ReadableMap map) {
+        HashMap<String, Object> hashMap = new HashMap<>();
+        ReadableMapKeySetIterator iterator = map.keySetIterator();
+        while (iterator.hasNextKey()) {
+            String key = iterator.nextKey();
+            switch (map.getType(key)) {
+                case Null:
+                    hashMap.put(key, null);
+                    break;
+                case Boolean:
+                    hashMap.put(key, map.getBoolean(key));
+                    break;
+                case Number:
+                    hashMap.put(key, map.getDouble(key));
+                    break;
+                case String:
+                    hashMap.put(key, map.getString(key));
+                    break;
+                case Map:
+                    hashMap.put(key, toHashMap(map.getMap(key)));
+                    break;
+                default:
+                    throw new IllegalArgumentException("Could not convert object with key: " + key + ".");
+            }
+        }
+        return hashMap;
     }
 }
